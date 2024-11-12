@@ -1,21 +1,30 @@
 package edu.utsa.cs3443.adminproductuploader
 
+import android.content.Context
 import android.content.Intent
 import android.content.Intent.ACTION_GET_CONTENT
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.DisplayMetrics
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
@@ -40,9 +49,11 @@ class MainActivity : AppCompatActivity()
 {
     private val binding by lazy { ActivityMainBinding.inflate(layoutInflater) }
     private var selectedImages = mutableListOf<Uri>()
-    private val selectedColors = mutableListOf<Int>()
+    private var selectedColors = mutableListOf<Int>()
     private val productStorage = Firebase.storage.reference
     private val firestore = Firebase.firestore
+
+    private lateinit var ImagePreviews: RecyclerView
 
     override fun onCreate(savedInstanceState: Bundle?)
     {
@@ -50,8 +61,10 @@ class MainActivity : AppCompatActivity()
         setContentView(binding.root)
 
         val categories = arrayOf("Category", "Fashion", "Electronics", "Accessories", "Furniture", "Medical", "Pets")
-
         binding.edCategory.adapter = ArrayAdapter<String>(this, androidx.appcompat.R.layout.support_simple_spinner_dropdown_item, categories)
+
+        ImagePreviews = binding.ImagePreviews
+        ImagePreviews.layoutManager = GridLayoutManager(this, 3)
 
         binding.buttonColorPicker.setOnClickListener {
             ColorPickerDialog.Builder(this)
@@ -118,17 +131,35 @@ class MainActivity : AppCompatActivity()
 
     private fun updateColors()
     {
-        var hexColors = ""
+        binding.ColorViewer.removeAllViews()
 
         selectedColors.forEach {
-            hexColors = "$hexColors ${Integer.toHexString(it)}"
+            addColorBox(it)
         }
 
-        binding.tvSelectedColors.text = hexColors
+        binding.NumberOfColors.text = selectedColors.size.toString()
+        if(selectedColors.size == 0) binding.NumberOfColors.text = ""
+    }
+
+    private fun addColorBox(color: Int)
+    {
+        val colorBox = View(this)
+
+        val layoutParams = LinearLayout.LayoutParams(150, 150)
+        layoutParams.marginEnd = 8
+        colorBox.layoutParams = layoutParams
+
+        colorBox.setBackgroundColor(color)
+
+        binding.ColorViewer.addView(colorBox)
     }
 
     private fun updateImages()
     {
+        val adapter: GalleryAdapter = GalleryAdapter(selectedImages, this)
+        ImagePreviews.adapter = adapter
+        adapter.notifyDataSetChanged()
+
         binding.tvSelectedImages.text = selectedImages.size.toString()
         if(selectedImages.size.toString().isEmpty() || binding.tvSelectedImages.text.equals("0")) binding.tvSelectedImages.text = ""
     }
@@ -337,7 +368,88 @@ class MainActivity : AppCompatActivity()
         binding.edDescription.text.clear()
         selectedImages.clear()
         selectedColors.clear()
+        updateColors()
+        updateImages()
+    }
+}
+
+
+class GalleryAdapter(private val images: List<Uri>, private val context: Context) : RecyclerView.Adapter<GalleryAdapter.ViewHolder>()
+{
+    class ViewHolder(view: View) : RecyclerView.ViewHolder(view)
+    {
+        val imageView: ImageView = view.findViewById(R.id.GalleryImage)
     }
 
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GalleryAdapter.ViewHolder
+    {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.recyclerview_images, parent, false)
+        return ViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: GalleryAdapter.ViewHolder, position: Int)
+    {
+        val uri = images[position]
+        holder.imageView.setImageURI(uri)
+
+        val displayMetrics: DisplayMetrics = context.resources.displayMetrics
+        val width = displayMetrics.widthPixels
+        val padding = 50 * 2
+        val finalWidth = (width - padding) / 3
+
+        val bitmap = loadScaledDownImage(uri, context, finalWidth)
+
+        val aspect = (bitmap?.height?.toFloat() ?: 0f) / bitmap?.width?.toFloat()!!
+
+        val height = ((finalWidth * aspect) - padding).toInt()
+
+        val layoutParams = holder.imageView.layoutParams as ViewGroup.MarginLayoutParams
+
+        layoutParams.topMargin = 10
+        layoutParams.bottomMargin = 10
+
+        holder.imageView.layoutParams.width = finalWidth
+        holder.imageView.layoutParams.height = height
+        holder.imageView.layoutParams = layoutParams
+    }
+
+    override fun getItemCount(): Int = images.size
+
+    private fun loadScaledDownImage(uri: Uri, context: Context, targetWidth: Int): Bitmap?
+    {
+        val options = BitmapFactory.Options()
+        options.inJustDecodeBounds = true
+
+        context.contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(it, null, options)
+        }
+
+        options.inSampleSize = calcluateInSampleSize(options, targetWidth, targetWidth)
+        options.inJustDecodeBounds = false
+        options.inPreferredConfig = Bitmap.Config.RGB_565
+
+        return context.contentResolver.openInputStream(uri)?.use {
+            BitmapFactory.decodeStream(it, null, options)
+        }
+    }
+
+    private fun calcluateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int
+    {
+        val (height: Int, width: Int) = options.outHeight to options.outWidth
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth)
+        {
+            val halfHeight: Int = height / 2
+            val halfWidth: Int = width / 2
+
+            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth)
+            {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
+    }
 
 }
