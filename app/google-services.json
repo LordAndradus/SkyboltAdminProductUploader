@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1045622547327",
+    "project_id": "ecommerceskyboltapp",
+    "storage_bucket": "ecommerceskyboltapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1045622547327:android:5d6119aabbbe425e1e304a",
+        "android_client_info": {
+          "package_name": "edu.utsa.cs3443.adminproductuploader"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLcQNNARN36KYbLdCkDe-9mNvqxG3muwQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1045622547327:android:0596d073207c2c701e304a",
+        "android_client_info": {
+          "package_name": "edu.utsa.cs3443.skyboltecommerceapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLcQNNARN36KYbLdCkDe-9mNvqxG3muwQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
