@@ -8,13 +8,14 @@
         android:id="@+id/GalleryImage"
         android:layout_width="100dp"
         android:layout_height="0dp"
-        android:scaleType="centerCrop"
-        android:adjustViewBounds="true"
+        android:scaleType="fitCenter"
         app:layout_constraintDimensionRatio="H,W"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:paddingTop="10dp"
         android:paddingBottom="10dp"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
         />
 </androidx.constraintlayout.widget.ConstraintLayout>

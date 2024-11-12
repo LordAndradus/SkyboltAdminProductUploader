@@ -379,6 +379,16 @@ class GalleryAdapter(private val images: List<Uri>, private val context: Context
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view)
     {
         val imageView: ImageView = view.findViewById(R.id.GalleryImage)
+
+        init {
+            itemView.setOnClickListener {
+                Log.d("Adapter", adapterPosition.toString())
+            }
+            itemView.setOnLongClickListener {
+                Log.d("Adapter", "Remove: $adapterPosition")
+                return@setOnLongClickListener true
+            }
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GalleryAdapter.ViewHolder
@@ -395,14 +405,17 @@ class GalleryAdapter(private val images: List<Uri>, private val context: Context
 
         val displayMetrics: DisplayMetrics = context.resources.displayMetrics
         val width = displayMetrics.widthPixels
-        val padding = 50 * 2
-        val finalWidth = (width - padding) / 3
+        val padding = 25
+        val totalPadding = padding * 2
+        val finalWidth = (width - totalPadding) / 3
 
-        val bitmap = loadScaledDownImage(uri, context, finalWidth)
+        //val bitmap = loadScaledDownImage(uri, context, finalWidth
+        //val aspect = (bitmap?.height?.toFloat() ?: 0f) / bitmap?.width?.toFloat()!!
 
-        val aspect = (bitmap?.height?.toFloat() ?: 0f) / bitmap?.width?.toFloat()!!
+        val bitmap = MediaStore.Images.Media.getBitmap(holder.imageView.context.contentResolver, uri)
+        val aspect = bitmap.height.toFloat() / bitmap.width.toFloat()
 
-        val height = ((finalWidth * aspect) - padding).toInt()
+        val height = ((finalWidth * aspect) - totalPadding).toInt()
 
         val layoutParams = holder.imageView.layoutParams as ViewGroup.MarginLayoutParams
 
@@ -425,7 +438,7 @@ class GalleryAdapter(private val images: List<Uri>, private val context: Context
             BitmapFactory.decodeStream(it, null, options)
         }
 
-        options.inSampleSize = calcluateInSampleSize(options, targetWidth, targetWidth)
+        options.inSampleSize = calculateInSampleSize(options, targetWidth, targetWidth)
         options.inJustDecodeBounds = false
         options.inPreferredConfig = Bitmap.Config.RGB_565
 
@@ -434,7 +447,7 @@ class GalleryAdapter(private val images: List<Uri>, private val context: Context
         }
     }
 
-    private fun calcluateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int
+    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int
     {
         val (height: Int, width: Int) = options.outHeight to options.outWidth
         var inSampleSize = 1
