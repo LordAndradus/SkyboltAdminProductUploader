@@ -11,7 +11,6 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.Toast
@@ -33,6 +32,9 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.util.Locale
 import java.util.UUID
+import kotlin.math.floor
+import kotlin.math.log10
+import kotlin.math.pow
 
 class MainActivity : AppCompatActivity()
 {
@@ -67,7 +69,7 @@ class MainActivity : AppCompatActivity()
                 }.show()
         }
 
-        val selectImagesAcitivtyResults = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        val selectImagesActivityResults = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             result ->
             if(result.resultCode == RESULT_OK)
             {
@@ -100,7 +102,7 @@ class MainActivity : AppCompatActivity()
             val intent = Intent(ACTION_GET_CONTENT)
             intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
             intent.type = "image/*"
-            selectImagesAcitivtyResults.launch(intent)
+            selectImagesActivityResults.launch(intent)
         }
 
         binding.buttonClearColors.setOnClickListener{
@@ -128,6 +130,7 @@ class MainActivity : AppCompatActivity()
     private fun updateImages()
     {
         binding.tvSelectedImages.text = selectedImages.size.toString()
+        if(selectedImages.size.toString().isEmpty() || binding.tvSelectedImages.text.equals("0")) binding.tvSelectedImages.text = ""
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean
@@ -144,11 +147,16 @@ class MainActivity : AppCompatActivity()
 
             if(!productValidation)
             {
-                Snackbar.make(binding.root, "Check your input parameters", Snackbar.LENGTH_LONG).show()
                 return false
             }
 
             saveProduct()
+        }
+
+        if(item.itemId == R.id.clearSelection)
+        {
+            Toast.makeText(this, "Selection has been cleared!", Toast.LENGTH_LONG).show()
+            clearSelection()
         }
 
         return super.onOptionsItemSelected(item)
@@ -159,10 +167,20 @@ class MainActivity : AppCompatActivity()
         val name = binding.edName.text.toString().trim()
         val category = binding.edCategory.selectedItem.toString().lowercase(Locale.ROOT)
         val price = binding.edPrice.text.toString().trim()
-        var scale : Float = binding.offerPercentage.text.toString().trim().toFloat()
-        if(scale >= 100f) scale = 100f
-        if(scale <= 100f && scale > 1f) scale /= 100f
-        val percentage = scale.toString().trim()
+        val percentage: String;
+
+        if(binding.offerPercentage.text.toString().trim().isNotEmpty())
+        {
+            var scale : Float = binding.offerPercentage.text.toString().trim().toFloat()
+            val magnitude: Float = 10.toDouble().pow(floor(log10(scale.toDouble())) + 1).toFloat()
+            scale = (scale / magnitude)
+            percentage = scale.toString().trim()
+        }
+        else
+        {
+            percentage = ""
+        }
+
         val description = binding.edDescription.text.toString().trim()
         val sizes = getSizesList(binding.edSizes.text.toString().trim())
         val imageByteArrays = getImagesByteArrays()
@@ -211,15 +229,7 @@ class MainActivity : AppCompatActivity()
                 .addOnSuccessListener {
                     hideLoading()
 
-                    //Reset items here
-                    binding.edName.text.clear()
-                    binding.edPrice.text.clear()
-                    binding.edCategory.setSelection(0)
-                    binding.offerPercentage.text.clear()
-                    binding.edSizes.text.clear()
-                    binding.edDescription.text.clear()
-                    selectedImages.clear()
-                    selectedColors.clear()
+                    clearSelection()
 
                     Snackbar.make(binding.root, "Product information saved successfully!", Snackbar.LENGTH_SHORT).show()
                 }
@@ -267,10 +277,29 @@ class MainActivity : AppCompatActivity()
 
     private fun validateInformation(): Boolean
     {
-        if(checkED(binding.edName)) return false
-        if(checkED(binding.edPrice)) return false
-        if(binding.edCategory.selectedItem.toString().lowercase(Locale.ROOT) == "category") return false
-        if(selectedImages.isEmpty()) return false
+        if(checkED(binding.edName))
+        {
+            Snackbar.make(binding.root, "Make sure to input a name!", Snackbar.LENGTH_SHORT).show()
+            return false
+        }
+
+        if(checkED(binding.edPrice))
+        {
+            Snackbar.make(binding.root, "Make sure to input a price!", Snackbar.LENGTH_SHORT).show()
+            return false
+        }
+
+        if(binding.edCategory.selectedItem.toString().lowercase(Locale.ROOT) == "category")
+        {
+            Snackbar.make(binding.root, "Make sure to select a category!", Snackbar.LENGTH_SHORT).show()
+            return false
+        }
+
+        if(selectedImages.isEmpty())
+        {
+            Snackbar.make(binding.root, "Make sure to upload at least 1 image!", Snackbar.LENGTH_SHORT).show()
+            return false
+        }
 
         return true
     }
@@ -296,4 +325,19 @@ class MainActivity : AppCompatActivity()
         }
         return editTextList
     }*/
+
+    private fun clearSelection()
+    {
+        //Reset items here
+        binding.edName.text.clear()
+        binding.edPrice.text.clear()
+        binding.edCategory.setSelection(0)
+        binding.offerPercentage.text.clear()
+        binding.edSizes.text.clear()
+        binding.edDescription.text.clear()
+        selectedImages.clear()
+        selectedColors.clear()
+    }
+
+
 }
