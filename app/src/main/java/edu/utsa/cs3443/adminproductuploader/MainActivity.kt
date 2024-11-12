@@ -12,6 +12,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,6 +31,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.util.Locale
 import java.util.UUID
 
 class MainActivity : AppCompatActivity()
@@ -44,6 +46,10 @@ class MainActivity : AppCompatActivity()
     {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
+
+        val categories = arrayOf("Category", "Fashion", "Electronics", "Accessories", "Furniture", "Medical", "Pets")
+
+        binding.edCategory.adapter = ArrayAdapter<String>(this, androidx.appcompat.R.layout.support_simple_spinner_dropdown_item, categories)
 
         binding.buttonColorPicker.setOnClickListener {
             ColorPickerDialog.Builder(this)
@@ -151,9 +157,12 @@ class MainActivity : AppCompatActivity()
     private fun saveProduct()
     {
         val name = binding.edName.text.toString().trim()
-        val category = binding.edCategory.text.toString().trim()
+        val category = binding.edCategory.selectedItem.toString().lowercase(Locale.ROOT)
         val price = binding.edPrice.text.toString().trim()
-        val percentage = binding.offerPercentage.text.toString().trim()
+        var scale : Float = binding.offerPercentage.text.toString().trim().toFloat()
+        if(scale >= 100f) scale = 100f
+        if(scale <= 100f && scale > 1f) scale /= 100f
+        val percentage = scale.toString().trim()
         val description = binding.edDescription.text.toString().trim()
         val sizes = getSizesList(binding.edSizes.text.toString().trim())
         val imageByteArrays = getImagesByteArrays()
@@ -167,7 +176,7 @@ class MainActivity : AppCompatActivity()
             try
             {
                 async {
-                    getImagesByteArrays().forEach {
+                    imageByteArrays.forEach {
                         val id = UUID.randomUUID().toString()
                         launch {
                             val imageStorage = productStorage.child("products/images/$id")
@@ -201,6 +210,17 @@ class MainActivity : AppCompatActivity()
             firestore.collection("products").add(product)
                 .addOnSuccessListener {
                     hideLoading()
+
+                    //Reset items here
+                    binding.edName.text.clear()
+                    binding.edPrice.text.clear()
+                    binding.edCategory.setSelection(0)
+                    binding.offerPercentage.text.clear()
+                    binding.edSizes.text.clear()
+                    binding.edDescription.text.clear()
+                    selectedImages.clear()
+                    selectedColors.clear()
+
                     Snackbar.make(binding.root, "Product information saved successfully!", Snackbar.LENGTH_SHORT).show()
                 }
                 .addOnFailureListener {
@@ -247,21 +267,20 @@ class MainActivity : AppCompatActivity()
 
     private fun validateInformation(): Boolean
     {
-        val EditTexts = getAllEditTexts(binding.root)
-
-        EditTexts.remove(binding.offerPercentage)
-        EditTexts.remove(binding.edDescription)
-
-        val check = EditTexts.none {
-            it.toString().trim().isEmpty()
-        }
-
+        if(checkED(binding.edName)) return false
+        if(checkED(binding.edPrice)) return false
+        if(binding.edCategory.selectedItem.toString().lowercase(Locale.ROOT) == "category") return false
         if(selectedImages.isEmpty()) return false
 
-        return check
+        return true
     }
 
-    fun getAllEditTexts(view: View): MutableList<EditText>
+    private fun checkED(ed: EditText): Boolean
+    {
+        return ed.text.toString().trim().isEmpty()
+    }
+
+    /*fun getAllEditTexts(view: View): MutableList<EditText>
     {
         val editTextList = mutableListOf<EditText>()
         if (view is EditText)
@@ -276,5 +295,5 @@ class MainActivity : AppCompatActivity()
             }
         }
         return editTextList
-    }
+    }*/
 }
