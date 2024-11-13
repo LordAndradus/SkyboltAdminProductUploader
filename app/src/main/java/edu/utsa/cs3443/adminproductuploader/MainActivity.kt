@@ -1,16 +1,20 @@
 package edu.utsa.cs3443.adminproductuploader
 
+import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.ACTION_GET_CONTENT
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.drawable.Drawable
 import android.net.Uri
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.DisplayMetrics
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
@@ -22,6 +26,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.get
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -67,18 +72,21 @@ class MainActivity : AppCompatActivity()
         ImagePreviews.layoutManager = GridLayoutManager(this, 3)
 
         binding.buttonColorPicker.setOnClickListener {
+            binding.buttonColorPicker.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             ColorPickerDialog.Builder(this)
                 .setTitle("Product color")
                 .setPositiveButton("Select", object : ColorEnvelopeListener {
                     override fun onColorSelected(envelope: ColorEnvelope?, fromUser: Boolean) {
                         envelope?.let {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) binding.ColorViewer.performHapticFeedback(HapticFeedbackConstants.CONFIRM) else binding.ColorViewer.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                             selectedColors.add(it.color)
                             updateColors()
                         }
                     }
                 })
                 .setNegativeButton("Cancel") { colorPicker, _ ->
-                        colorPicker.dismiss()
+                    binding.buttonColorPicker.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    colorPicker.dismiss()
                 }.show()
         }
 
@@ -112,6 +120,7 @@ class MainActivity : AppCompatActivity()
         }
 
         binding.buttonImagesPicker.setOnClickListener {
+            binding.buttonImagesPicker.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             val intent = Intent(ACTION_GET_CONTENT)
             intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
             intent.type = "image/*"
@@ -119,11 +128,13 @@ class MainActivity : AppCompatActivity()
         }
 
         binding.buttonClearColors.setOnClickListener{
+            binding.buttonClearColors.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             selectedColors.clear()
             updateColors()
         }
 
         binding.buttonClearImages.setOnClickListener{
+            binding.buttonClearImages.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             selectedImages.clear()
             updateImages()
         }
@@ -150,6 +161,48 @@ class MainActivity : AppCompatActivity()
         colorBox.layoutParams = layoutParams
 
         colorBox.setBackgroundColor(color)
+
+        colorBox.setOnClickListener {
+            colorBox.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            ColorPickerDialog.Builder(this)
+                .setTitle("Change Color Parameter")
+                .setPositiveButton("Change", object : ColorEnvelopeListener {
+                    override fun onColorSelected(envelope: ColorEnvelope?, fromUser: Boolean) {
+                        envelope?.let {
+                            for(i in 0 until binding.ColorViewer.childCount)
+                            {
+                                if(binding.ColorViewer[i].id == colorBox.id)
+                                {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) binding.ColorViewer.performHapticFeedback(HapticFeedbackConstants.CONFIRM) else binding.ColorViewer.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                                    binding.ColorViewer[i].setBackgroundColor(it.color)
+                                    break
+                                }
+                            }
+                        }
+                    }
+                })
+                .setNegativeButton("Cancel") { colorPicker, _ ->
+                    colorBox.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                    colorPicker.dismiss()
+                }.show()
+        }
+
+        colorBox.setOnLongClickListener {
+            for(i in 0 until binding.ColorViewer.childCount)
+            {
+                if(binding.ColorViewer[i].id == colorBox.id)
+                {
+                    colorBox.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    binding.ColorViewer.removeViewAt(i)
+                    selectedColors.removeAt(i)
+
+                    updateColors()
+                    return@setOnLongClickListener true
+                }
+            }
+
+            return@setOnLongClickListener false
+        }
 
         binding.ColorViewer.addView(colorBox)
     }
@@ -178,6 +231,8 @@ class MainActivity : AppCompatActivity()
 
             if(!productValidation)
             {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) binding.buttonClearImages.performHapticFeedback(HapticFeedbackConstants.REJECT) else binding.buttonClearImages.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+
                 return false
             }
 
@@ -189,6 +244,8 @@ class MainActivity : AppCompatActivity()
             Toast.makeText(this, "Selection has been cleared!", Toast.LENGTH_LONG).show()
             clearSelection()
         }
+
+        binding.buttonClearImages.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
 
         return super.onOptionsItemSelected(item)
     }
@@ -259,21 +316,21 @@ class MainActivity : AppCompatActivity()
             firestore.collection("products").add(product)
                 .addOnSuccessListener {
                     hideLoading()
-
                     clearSelection()
-
                     Snackbar.make(binding.root, "Product information saved successfully!", Snackbar.LENGTH_SHORT).show()
                 }
                 .addOnFailureListener {
                     hideLoading()
                     Log.e("Error", it.message.toString())
                     Snackbar.make(binding.root, it.message.toString(), Snackbar.LENGTH_LONG).show()
+
                 }
         }
     }
 
     private fun hideLoading()
     {
+        binding.progressBar.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
         binding.progressBar.visibility = View.INVISIBLE
     }
 
@@ -371,98 +428,123 @@ class MainActivity : AppCompatActivity()
         updateColors()
         updateImages()
     }
-}
 
 
-class GalleryAdapter(private val images: List<Uri>, private val context: Context) : RecyclerView.Adapter<GalleryAdapter.ViewHolder>()
-{
-    class ViewHolder(view: View) : RecyclerView.ViewHolder(view)
+    companion object
     {
-        val imageView: ImageView = view.findViewById(R.id.GalleryImage)
-
-        init {
-            itemView.setOnClickListener {
-                Log.d("Adapter", adapterPosition.toString())
-            }
-            itemView.setOnLongClickListener {
-                Log.d("Adapter", "Remove: $adapterPosition")
-                return@setOnLongClickListener true
-            }
-        }
-    }
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GalleryAdapter.ViewHolder
-    {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.recyclerview_images, parent, false)
-        return ViewHolder(view)
-    }
-
-    override fun onBindViewHolder(holder: GalleryAdapter.ViewHolder, position: Int)
-    {
-        val uri = images[position]
-        holder.imageView.setImageURI(uri)
-
-        val displayMetrics: DisplayMetrics = context.resources.displayMetrics
-        val width = displayMetrics.widthPixels
-        val padding = 25
-        val totalPadding = padding * 2
-        val finalWidth = (width - totalPadding) / 3
-
-        //val bitmap = loadScaledDownImage(uri, context, finalWidth
-        //val aspect = (bitmap?.height?.toFloat() ?: 0f) / bitmap?.width?.toFloat()!!
-
-        val bitmap = MediaStore.Images.Media.getBitmap(holder.imageView.context.contentResolver, uri)
-        val aspect = bitmap.height.toFloat() / bitmap.width.toFloat()
-
-        val height = ((finalWidth * aspect) - totalPadding).toInt()
-
-        val layoutParams = holder.imageView.layoutParams as ViewGroup.MarginLayoutParams
-
-        layoutParams.topMargin = 10
-        layoutParams.bottomMargin = 10
-
-        holder.imageView.layoutParams.width = finalWidth
-        holder.imageView.layoutParams.height = height
-        holder.imageView.layoutParams = layoutParams
-    }
-
-    override fun getItemCount(): Int = images.size
-
-    private fun loadScaledDownImage(uri: Uri, context: Context, targetWidth: Int): Bitmap?
-    {
-        val options = BitmapFactory.Options()
-        options.inJustDecodeBounds = true
-
-        context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, options)
-        }
-
-        options.inSampleSize = calculateInSampleSize(options, targetWidth, targetWidth)
-        options.inJustDecodeBounds = false
-        options.inPreferredConfig = Bitmap.Config.RGB_565
-
-        return context.contentResolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, options)
-        }
-    }
-
-    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int
-    {
-        val (height: Int, width: Int) = options.outHeight to options.outWidth
-        var inSampleSize = 1
-
-        if (height > reqHeight || width > reqWidth)
+        fun onItemLongClick(position: Int, activity: MainActivity)
         {
-            val halfHeight: Int = height / 2
-            val halfWidth: Int = width / 2
-
-            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth)
-            {
-                inSampleSize *= 2
-            }
+            activity.selectedImages.removeAt(position)
+            activity.updateImages()
+            activity.binding.ImagePreviews.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            Toast.makeText(activity, "Image removed at position: $position", Toast.LENGTH_LONG).show()
         }
-        return inSampleSize
     }
 
+    class GalleryAdapter(private val images: List<Uri>, private val context: MainActivity) : RecyclerView.Adapter<GalleryAdapter.ViewHolder>()
+    {
+        inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view)
+        {
+            val imageView: ImageView = view.findViewById(R.id.GalleryImage)
+
+            init {
+                itemView.setOnClickListener {
+                    Log.d("Adapter", adapterPosition.toString())
+                    showImageDialog(imageView.drawable)
+                }
+                itemView.setOnLongClickListener {
+                    Log.d("Adapter", "Remove: $adapterPosition")
+                    MainActivity.onItemLongClick(adapterPosition, context)
+                    return@setOnLongClickListener true
+                }
+            }
+        }
+
+        private fun showImageDialog(image: Drawable)
+        {
+            val dialog = Dialog(context)
+            dialog.setContentView(R.layout.dialog_enlarge_preview)
+
+            val enlargedImage = dialog.findViewById<ImageView>(R.id.enlargedImageView)
+            enlargedImage.setImageDrawable(image)
+
+            context.binding.ImagePreviews.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            dialog.show()
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GalleryAdapter.ViewHolder
+        {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.recyclerview_images, parent, false)
+            return ViewHolder(view)
+        }
+
+        override fun onBindViewHolder(holder: GalleryAdapter.ViewHolder, position: Int)
+        {
+            val uri = images[position]
+            holder.imageView.setImageURI(uri)
+
+            val displayMetrics: DisplayMetrics = context.resources.displayMetrics
+            val width = displayMetrics.widthPixels
+            val padding = 25
+            val totalPadding = padding * 2
+            val finalWidth = (width - totalPadding) / 3
+
+            //val bitmap = loadScaledDownImage(uri, context, finalWidth
+            //val aspect = (bitmap?.height?.toFloat() ?: 0f) / bitmap?.width?.toFloat()!!
+
+            val bitmap = MediaStore.Images.Media.getBitmap(holder.imageView.context.contentResolver, uri)
+            val aspect = bitmap.height.toFloat() / bitmap.width.toFloat()
+
+            val height = ((finalWidth * aspect) - totalPadding).toInt()
+
+            val layoutParams = holder.imageView.layoutParams as ViewGroup.MarginLayoutParams
+
+            layoutParams.topMargin = 10
+            layoutParams.bottomMargin = 10
+
+            holder.imageView.layoutParams.width = finalWidth
+            holder.imageView.layoutParams.height = height
+            holder.imageView.layoutParams = layoutParams
+        }
+
+        override fun getItemCount(): Int = images.size
+
+        private fun loadScaledDownImage(uri: Uri, context: Context, targetWidth: Int): Bitmap?
+        {
+            val options = BitmapFactory.Options()
+            options.inJustDecodeBounds = true
+
+            context.contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it, null, options)
+            }
+
+            options.inSampleSize = calculateInSampleSize(options, targetWidth, targetWidth)
+            options.inJustDecodeBounds = false
+            options.inPreferredConfig = Bitmap.Config.RGB_565
+
+            return context.contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it, null, options)
+            }
+        }
+
+        private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int
+        {
+            val (height: Int, width: Int) = options.outHeight to options.outWidth
+            var inSampleSize = 1
+
+            if (height > reqHeight || width > reqWidth)
+            {
+                val halfHeight: Int = height / 2
+                val halfWidth: Int = width / 2
+
+                while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth)
+                {
+                    inSampleSize *= 2
+                }
+            }
+            return inSampleSize
+        }
+
+    }
 }
