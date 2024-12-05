@@ -1,12 +1,15 @@
 package edu.utsa.cs3443.adminproductuploader
 
+import edu.utsa.cs3443.adminproductuploader.R
 import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.ACTION_GET_CONTENT
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.LayerDrawable
 import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
@@ -26,6 +29,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.view.get
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
@@ -65,7 +69,7 @@ class MainActivity : AppCompatActivity()
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
 
-        val categories = arrayOf("Category", "Fashion", "Electronics", "Accessories", "Furniture", "Medical", "Pets")
+        val categories = arrayOf("Category", "Fashion", "Electronics", "Accessories", "Furniture", "Medical", "Food", "Pets")
         binding.edCategory.adapter = ArrayAdapter<String>(this, androidx.appcompat.R.layout.support_simple_spinner_dropdown_item, categories)
 
         ImagePreviews = binding.ImagePreviews
@@ -160,7 +164,12 @@ class MainActivity : AppCompatActivity()
         layoutParams.marginEnd = 8
         colorBox.layoutParams = layoutParams
 
-        colorBox.setBackgroundColor(color)
+        val backgroundColor = ColorDrawable(color)
+        val borderDrawable = ContextCompat.getDrawable(this, R.drawable.border)
+        val layerDrawable = LayerDrawable(arrayOf(backgroundColor, borderDrawable))
+
+        colorBox.background = layerDrawable
+
 
         colorBox.setOnClickListener {
             colorBox.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
@@ -174,7 +183,12 @@ class MainActivity : AppCompatActivity()
                                 if(binding.ColorViewer[i].id == colorBox.id)
                                 {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) binding.ColorViewer.performHapticFeedback(HapticFeedbackConstants.CONFIRM) else binding.ColorViewer.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                                    binding.ColorViewer[i].setBackgroundColor(it.color)
+
+                                    val backgroundColor = ColorDrawable(it.color)
+                                    val borderDrawable = ContextCompat.getDrawable(baseContext, R.drawable.border)
+                                    val layerDrawable = LayerDrawable(arrayOf(backgroundColor, borderDrawable))
+
+                                    binding.ColorViewer[i].background = layerDrawable
                                     break
                                 }
                             }
@@ -223,6 +237,12 @@ class MainActivity : AppCompatActivity()
         return true
     }
 
+    /*
+     * Feel the rush of Rage! Enjoy every delectable bite of this bloodily enriched cereal.
+     * Feel the demon, raise the demon, and unleash the demon!
+     * Now comes with a special enemy skill to take the battle to them!
+     */
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean
     {
         if(item.itemId == R.id.saveProduct)
@@ -250,7 +270,7 @@ class MainActivity : AppCompatActivity()
         return super.onOptionsItemSelected(item)
     }
 
-    private fun saveProduct()
+    private fun saveProduct(cat: String = binding.edCategory.selectedItem.toString())
     {
         val name = binding.edName.text.toString().trim()
         val category = binding.edCategory.selectedItem.toString().lowercase(Locale.ROOT)
@@ -270,6 +290,9 @@ class MainActivity : AppCompatActivity()
         }
 
         val description = binding.edDescription.text.toString().trim()
+        val special = binding.SpecialItem.isChecked
+        val bestDeal = binding.BestDeal.isChecked
+        val bestProduct = binding.BestProduct.isChecked
         val sizes = getSizesList(binding.edSizes.text.toString().trim())
         val imageByteArrays = getImagesByteArrays()
         val imageURLs = mutableListOf<String>()
@@ -285,7 +308,7 @@ class MainActivity : AppCompatActivity()
                     imageByteArrays.forEach {
                         val id = UUID.randomUUID().toString()
                         launch {
-                            val imageStorage = productStorage.child("products/images/$id")
+                            val imageStorage = productStorage.child("products/images/$category/$name/$id")
                             val result = imageStorage.putBytes(it).await()
                             val downloadURL = result.storage.downloadUrl.await().toString()
                             imageURLs.add(downloadURL)
@@ -309,6 +332,9 @@ class MainActivity : AppCompatActivity()
                 if(percentage.isEmpty()) null else percentage.toFloat(),
                 description.ifEmpty { null },
                 if(selectedColors.isEmpty()) null else selectedColors,
+                special,
+                bestDeal,
+                bestProduct,
                 sizes,
                 imageURLs
             )
@@ -383,6 +409,12 @@ class MainActivity : AppCompatActivity()
             return false
         }
 
+        if(binding.BestDeal.isChecked && binding.offerPercentage.text.toString().trim().isEmpty())
+        {
+            Snackbar.make(binding.root, "Best deals need to offer a deal! Dunkhead!!!", Snackbar.LENGTH_SHORT).show()
+            return false
+        }
+
         if(selectedImages.isEmpty())
         {
             Snackbar.make(binding.root, "Make sure to upload at least 1 image!", Snackbar.LENGTH_SHORT).show()
@@ -423,6 +455,9 @@ class MainActivity : AppCompatActivity()
         binding.offerPercentage.text.clear()
         binding.edSizes.text.clear()
         binding.edDescription.text.clear()
+        binding.SpecialItem.isChecked = false
+        binding.BestDeal.isChecked = false
+        binding.BestProduct.isChecked = false
         selectedImages.clear()
         selectedColors.clear()
         updateColors()

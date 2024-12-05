@@ -8,6 +8,9 @@ data class Product(
     val offerPercentage: Float? = null,
     val description: String? = null,
     val colors: List<Int>? = null,
+    val special: Boolean? = false,
+    val bestDeal: Boolean? = false,
+    val bestProduct : Boolean? = false,
     val sizes: List<String>? = null,
     val images: List<String>
 )
